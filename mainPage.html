@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<meta name="viewport" content="width=divice-width" , initial-scale="1.0">
+<header>
+    <style>
+        :root {
+            text-align: center;
+
+
+            font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+            line-height: 1.5;
+            font-weight: 400;
+
+            color-scheme: light dark;
+            color: rgba(255, 255, 255, 0.87);
+            background-color: #242424;
+
+            font-synthesis: none;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            margin: auto;
+
+
+        }
+
+        p {
+            font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+            vertical-align: middle;
+        }
+
+        ul {
+            color: rgba(255, 255, 255, 0.87);
+        }
+
+        h2 {
+
+            vertical-align: middle;
+            font-family: Arial, Helvetica, sans-serif;
+            text-decoration: underline;
+        }
+
+        dt {
+            text-decoration: underline;
+        }
+
+        tr:nth-child(even) {
+            background-color: white;
+        }
+
+        tr:nth-child(odd) {
+            background-color: lightgrey;
+        }
+
+        .centre {
+            margin: auto;
+            vertical-align: middle;
+            max-width: 90%;
+        }
+
+        .reference {
+            font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+        }
+    </style>
+</header>
+
+<body>
+    <h1 class="center">
+        DATABASE ACCESS PROGRAM
+    </h1>
+    <div class="center">
+        <h2>
+            Names:
+        </h2>
+        <br />
+        <select id="actorNames">
+        </select>
+        <button onclick="(findActor(document.getElementById('actorNames').value))">Find all Films</button>
+        <select id="actor2name" onchange="checkButton()"></select>
+        <button id="compareButton" onclick="compareActors()" disabled="true">Find Shared Films</button>
+    </div>
+    <div>
+        <p id="filmList"></p>
+    </div>
+    <div>
+        <ul id="stuffList">
+
+        </ul>
+    </div>
+</body>
+
+<script>
+    // Finds anything on the url based on the home. This is used in all function calls
+    async function fetchStuff(urlFollow) {
+        const urlStart = "http://localhost:8080/home/"; // This is our home dir, all urls are built ontop of it.
+        const url = urlStart + urlFollow; // build the URL 
+        let out = await fetch(url); // Request and await data
+        const data = await out.json(); // turn data into a json
+        return data;
+    }
+
+
+    // From an actor ID, finds all films that actor was in, then adds the films to the output box
+    async function findActor(actorId) { // called when find button found
+
+        let url = "actor/" + actorId; // Add actor ID onto the url
+        let list = document.getElementById("filmList"); // set the correct list area
+
+        try {
+            if (!actorId) { // if no actor id the connection failed.
+                list.innerText = "ERROR: Connection Failed"
+            }
+            let data = await fetchStuff(url); // get the data for the actor
+
+            let x = "";
+            for (const element of data.films) { // add each film into the output string with a br between them
+                x = x + "<br/>" + element.title
+            }
+            list.innerHTML = x; // add the output string to the page
+        }
+        catch (error){
+            list.innerHTML = "ERROR: Connection Failed"
+        }
+    }
+
+    // Run at start only, finds all actors and puts them into the two dropdown boxes. 
+    async function fillWithAllActors() {
+        // Get the drop down boxes
+        let box = document.getElementById("actorNames"); // TODO: Refactor these, "box1" is bad form
+        let box2 = document.getElementById("actor2name"); // TODO: Refactor these, "box2" is bad form.
+        try {
+            // Get data from the database
+            const data = await fetchStuff("actor");
+            let x = "";
+            // for each actor in the list...
+            for (const element of data) {
+                // Add that as an option to the output string
+                x = x + "<option value=\"" + element.actor_id + "\">" + element.first_name + " " + element.last_name + "</option>"
+            }
+            // Send the output strings to the HTML
+            box.innerHTML = x;
+            // Box2 starts with a null value.
+            // Then send to the HTML
+            box2.innerHTML = "<option value=\"\"/>" + x;
+        }
+        catch (error) {
+            // If connection fails, tell user
+            box.innerHTML = "<option value=\"\">CONNECTION FAILED<option/>";
+
+            box2.innerHTML = "<option value=\"\">CONNECTION FAILED<option/>";
+        }
+    }
+
+    async function compareActors() { // called when compare button pressed
+        // Define the DOM elements
+        let box = document.getElementById("actorNames");
+        let box2 = document.getElementById("actor2name");
+        let outbox = document.getElementById("filmList");
+
+        // Get the data for both actors
+        const firstActor = await fetchStuff("actor/" + box.value);
+        const secondActor = await fetchStuff("actor/" + box2.value);
+
+        x = ""; // text output
+        // Lists to fill with films
+        let films_1 = []; // TODO: refactor this - it's unclear
+        let films_2 = []; // TODO: refactor this - very unclear
+        // Fill the lists with films
+        for (const element of firstActor.films) {
+            films_1.push(element.title) // Adds the film title to the list
+        }
+        for (const element of secondActor.films) {
+            films_2.push(element.title) // Adds the film title to the list
+        }
+        let flag = false;
+
+        /* This code is just bad - but it works. 
+         * This searches every film from the first list and finds if there's a matching film in the second list.
+         * TODO: Possible improvements:
+         * - Use the includes method
+         * - Compare the values alphabetically and if it's passed alphabetically in the list move on.
+         */
+
+        x = "<ul>"; // Add a start point of an unordered list
+        for (const element of films_1) { // For each film the first actor is in
+            for (const comp of films_2) { // For each film the second actor is in
+                if (comp == element) // if the items match:
+                {
+                    // Add the item to the out string as a list item
+                    x = x + "<li>" + comp + "</li>";
+                    break; // Break to not check the rest of the list (this is the only optimisation in this method)
+                } // if it's not matching, keep looping
+            } // When the last loop is complete, you've checked everything
+        }
+        x = x + "<ul/>" // add the endpoint to the unordered list
+        outbox.innerHTML = x; // Set the box
+    }
+
+    function checkButton() { // Unlocks button if second box is a valid value
+        let val = document.getElementById("actor2name").value; // get the value of the second actor
+        let button = document.getElementById("compareButton"); // get the button item
+
+        if (val) { // if truthly (or not null)
+            button.disabled = false; // enable button
+        }
+        else { // if falsely (or null)
+            button.disabled = true; // disable button
+        }
+    }
+
+    fillWithAllActors(); // Run the fillWithAllActors() list on load
+    // TODO: Make this an "onload" method instead
+
+</script>
